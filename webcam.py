@@ -4,7 +4,7 @@ import cv2 as cv
 
 class GirdDetect():
     def __init__(self):
-        self.cap = cv.VideoCapture(0)
+        self.cap = cv.VideoCapture(1)
         if not self.cap.isOpened():
             print("Cannot open camera")
             exit()
@@ -27,15 +27,21 @@ class GirdDetect():
             img_copy = img.copy()
             img_roi = img.copy()
             # getting contours
-            self.get_contours(canny, img_copy)
-            
-            
-            if cv.waitKey(1) == ord('s'): # press q to exit
-                self.select_area_in_image(img_roi)
-                cv.imshow('roi', img_roi)
-
-            
-            
+            surface_coordinates = self.get_contours(canny, img_copy)
+            print("Surface coordinates: ", surface_coordinates)
+            if cv.waitKey(1) == ord('s') or surface_coordinates: # press q to exit  
+                point_coordinates = self.select_area_in_image(img_roi)
+                print(surface_coordinates, point_coordinates)
+                if surface_coordinates:    
+                    pc_surface = self.transform_to_surface(surface_coordinates, point_coordinates) # Point Coordinates in surface frame
+                    print("Point Coordinates in surface frame: ", pc_surface)
+                    grid_cell = self.get_block(pc_surface)
+                    print("Grid cell: ", grid_cell)
+                else:
+                    print("No surface detected")
+                    
+                
+                         
             # Display the resulting frame
             cv.imshow('contoured_img', img_copy)
             if cv.waitKey(1) == ord('q'): # press q to exit
@@ -47,8 +53,8 @@ class GirdDetect():
         
     def get_contours(self, img, img_copy):
         contours, hierarchy = cv.findContours(img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        boxes = {}
-        i = 0
+        # boxes = {}
+        # i = 0
         for cnt in contours:
             area = cv.contourArea(cnt)
             if area > 1000:
@@ -59,25 +65,48 @@ class GirdDetect():
                 print(len(approx)) # number of corner points
                 objCor = len(approx) # number of corner points
                 x, y, w, h = cv.boundingRect(approx) # getting the bounding box
-                print("Bounding box: ", x, y, w, h)
+                surface_coordinates = [x, y, w, h]
+                # x and y are pixel coordinates, top down (the origin is at top left of the image)
+                # w and h are width and height
+                # rectangle vertices: (x, y); (x+w, y); (x, y+h); (x+w, y+h)
                 
                 if objCor == 4:
-                    # Centre of the bounding box
+                    # Centre of the bounding box                    
+                    # cx = x + w // 2
+                    # cy = y + h // 2
+                    # boxes[i] = ([cx, cy])
+                    # i+=1
+                    print("Bounding box: ", x, y, w, h)
                     
-                    cx = x + w // 2
-                    cy = y + h // 2
-                    boxes[i] = ([cx, cy])
-                    i+=1
                     cv.rectangle(img_copy, (x, y), (x+w, y+h), (0, 255, 0), 2) # drawing the bounding box for a rectangle (grid)
+                    return surface_coordinates
                 else:
                     cv.rectangle(img_copy, (x, y), (x+w, y+h), (0, 0, 255), 2) # drawing the bounding box for other shape (solid waste)
                 # Adding text to the image
+                # At this point, this code is by Co-Pilot so I don't even know what this text is showing
                 cv.putText(img_copy, "Points: " + str(len(approx)), (x + w + 20, y + 20), cv.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0), 2)
                 cv.putText(img_copy, "Area: " + str(int(area)), (x + w + 20, y + 45), cv.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0), 2)
     
+    def get_block(self, pc_surface):
+        """Get the coordinates in the form of a 6X6 grid"""
+        grid_bs_x = pc_surface[2] // 6 # grid block size x
+        grid_bs_y = pc_surface[3] // 6 # grid block size y
+        
+        x = pc_surface[0] // grid_bs_x
+        y = pc_surface[1] // grid_bs_y
+        return [x, y]
+        
+        
+        
+    def transform_to_surface(self, surface_coordinates, point_coordinates):
+        # coodinates is in format [x, y, w, h]
+        return [point_coordinates[0]-surface_coordinates[0], point_coordinates[1] - surface_coordinates[1], point_coordinates[2], point_coordinates[3]]
+        
+    
     def select_area_in_image(self, img):
-        x, y, w, h = cv.selectROI("Select ROI", img, fromCenter=False, showCrosshair=True)
-        print(x, y, w, h)
+        point_coordinates = cv.selectROI("Select ROI", img, fromCenter=False, showCrosshair=True)
+        print("Selected Area:", point_coordinates)
+        return point_coordinates
         
                     
     
