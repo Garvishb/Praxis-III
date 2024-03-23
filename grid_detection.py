@@ -1,7 +1,7 @@
 import numpy as np
 import cv2 as cv
 import time
-
+import serial
 
 
 # New idea:
@@ -18,6 +18,7 @@ class GirdDetect():
         if not self.cap.isOpened():
             print("Cannot open camera")
             exit()
+            
             
     def detect(self):
         while True:
@@ -40,16 +41,22 @@ class GirdDetect():
             surface_coordinates = self.get_contours(canny, img_copy)
             if cv.waitKey(1) == ord('s'): # press q to exit  
                 print("Surface coordinates: ", surface_coordinates)
-                point_coordinates = self.select_area_in_image(img_roi)
                 # print("Point Coordinates", point_coordinates)
-                if surface_coordinates:    
+                if surface_coordinates: # if surface is detected
+                    point_coordinates = self.select_area_in_image(img_roi)   
                     pc_surface = self.transform_to_surface(surface_coordinates, point_coordinates) # Point Coordinates in surface frame
                     # print("Point Coordinates in surface frame: ", pc_surface)
                     grid_cell = self.get_block(pc_surface)
                     print("Grid cell: ", grid_cell)
+                    serial = True
+                    if serial == True:
+                        port = "COM3"
+                        baudrate = 9600
+                        serial_connection = serial.Serial(port, baudrate)
+                        self.send_serial(grid_cell, serial_connection)
+                    
                 else:
                     print("No surface detected")
-                    
                 
                          
             # Display the resulting frame
@@ -106,7 +113,7 @@ class GirdDetect():
         
         x = pc_surface[0] // grid_bs_x
         y = pc_surface[1] // grid_bs_y
-        return [x, y]
+        return [x+1, y+1]
         
         
         
@@ -116,11 +123,34 @@ class GirdDetect():
         
     
     def select_area_in_image(self, img):
+        """Select an area in the image to get the coordinates of the point in the image"""
         point_coordinates = cv.selectROI("Select ROI", img, fromCenter=False, showCrosshair=True)
-        print("Selected Area:", point_coordinates)
-        return point_coordinates
+        # print("Selected Area:", point_coordinates)
+        mid_x = point_coordinates[0] + point_coordinates[2] // 2
+        mid_y = point_coordinates[1] + point_coordinates[3] // 2
+        return [mid_x, mid_y]
         
-                    
+    def send_serial(self, grid_cell, serial_connection):
+        """Transform grid coordinate to bottom left origin (6-y) and then change it to 36bit binary: 
+        000000 000000 000000 000000 000000 000000 where it goes 
+        (1,1), (2,1), (3,1)....(6, 1), (1, 2), (2, 2)....(6, 6)"""
+        
+        
+        grid_cell[1] = 6 - grid_cell[1]
+        
+        binary_string = self.coordinate_to_binary(grid_cell)
+        serial_connection.write(binary_string.encode())
+        print("Data sent")
+        serial_connection.close()
+    
+    def coordinate_to_binary(self, grid_cell):
+        """Convert the grid cell to 36bit binary"""
+        
+        binary_string = "0" * 36
+        binary_string[grid_cell[0] + (grid_cell[1]-1)*6] = "1"
+        return binary_string
+        
+        
     
     def show_image(self, img, name): # havn't figured this out yet
         cv.imshow(name, img)
