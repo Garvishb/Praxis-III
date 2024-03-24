@@ -2,7 +2,7 @@ import numpy as np
 import cv2 as cv
 import time
 import serial
-
+from picamera2 import PiCamera2
 
 # New idea:
 # Get the bounding box of the surface       
@@ -15,6 +15,10 @@ import serial
 class GirdDetect():
     def __init__(self):
         self.cap = cv.VideoCapture(1)
+        
+        self.camera = PiCamera2()
+        self.camera.resolution = (640, 480)
+        time.sleep(0.1)
         if not self.cap.isOpened():
             print("Cannot open camera")
             exit()
@@ -22,6 +26,14 @@ class GirdDetect():
             
     def detect(self):
         while True:
+            image = np.empty((480, 640, 3), dtype=np.uint8)
+            self.camera.capture(image, 'bgr')
+            
+            # Convert the image to RGB (OpenCV uses BGR by default)
+            # image_rgb = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            cv.imshow('frame', image)
+            self.camera.close()
+            
             # Capture frame-by-frame
             success, img = self.cap.read()
             # if frame is read correctly success is True
