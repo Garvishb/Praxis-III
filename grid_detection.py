@@ -14,25 +14,31 @@ from picamera2 import Picamera2
 
 class GirdDetect():
     def __init__(self):
-        self.cap = cv.VideoCapture(0)
+        # self.cap = cv.VideoCapture(0)
         
         
-        if not self.cap.isOpened():
-            print("Cannot open camera")
-            exit()
+        # if not self.cap.isOpened():
+        #     print("Cannot open camera")
+        #     exit()
             
-            
+        self.cap = Picamera2()
+        self.cap.configure(self.cap.create_preview_configuration(main={"format": 'XRGB8888', "size": (640, 480)}))
+        self.cap.start()
+        time.sleep(0.1)            
     def detect(self):
         while True:
 
             # Capture frame-by-frame
-            success, img = self.cap.read()
-            # if frame is read correctly success is True
-            if not success:
-                print("Can't receive frame (stream end?). Exiting ...")
-                break
+            # success, img = self.cap.read()
+            # # if frame is read correctly success is True
+            # if not success:
+            #     print("Can't receive frame (stream end?). Exiting ...")
+            #     break
             # Our operations on the frame come here
             # Turn original image to canny
+            
+            img = self.cap.capture_array()
+            
             gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
             blur = cv.GaussianBlur(gray, (5, 5), 3)
             canny = cv.Canny(blur, 50, 50)
@@ -51,7 +57,7 @@ class GirdDetect():
                     # print("Point Coordinates in surface frame: ", pc_surface)
                     grid_cell = self.get_block(pc_surface)
                     print("Grid cell: ", grid_cell)
-                    serial = True
+                    serial = False
                     if serial == True:
                         port = "COM3"
                         baudrate = 9600
@@ -68,7 +74,7 @@ class GirdDetect():
                 break     
 
         # When everything done, release the capture
-        self.cap.release()
+        self.cap.close()
         cv.destroyAllWindows()
         
     def get_contours(self, img, img_copy):
@@ -141,7 +147,7 @@ class GirdDetect():
         
         grid_cell[1] = 6 - grid_cell[1]
         
-        binary_string = self.coordinate_to_binary(grid_cell)
+        binary_string = "<" + self.coordinate_to_binary(grid_cell) + ">"
         serial_connection.write(binary_string.encode())
         print("Data sent")
         serial_connection.close()
