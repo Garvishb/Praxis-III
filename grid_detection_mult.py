@@ -23,7 +23,7 @@ class GirdDetect():
     def detect(self):
         while True:
             # Capture frame-by-frame
-            success, img = self.cap.read()
+            img = self.cap.capture_array()
             # if frame is read correctly success is True
             gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
             blur = cv.GaussianBlur(gray, (5, 5), 3)
@@ -48,7 +48,7 @@ class GirdDetect():
                     print("Grid cell: ", grid_cell)
                     send = True
                     if send == True:
-                        port = "COM17"
+                        port = "/dev/ttyACM0"
                         baudrate = 9600
                         serial_connection = serial.Serial(port, baudrate)
                         self.send_serial(grid_cell, serial_connection)
