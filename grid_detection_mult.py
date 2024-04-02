@@ -48,7 +48,7 @@ class GirdDetect():
                     print("Grid cell: ", grid_cell)
                     send = True
                     if send == True:
-                        port = "COM3"
+                        port = "COM17"
                         baudrate = 9600
                         serial_connection = serial.Serial(port, baudrate)
                         self.send_serial(grid_cell, serial_connection)
@@ -113,6 +113,7 @@ class GirdDetect():
             grid_bs_y = (pc_surface[i][3] // 6) # grid block size y
             x = pc_surface[i][0] // grid_bs_x
             y = pc_surface[i][1] // grid_bs_y
+            # print("Grid block: ", x, y)
             grid_coordinates.append([x+1, y+1])
         return grid_coordinates
         
@@ -134,7 +135,8 @@ class GirdDetect():
         # print("Selected Area:", point_coordinates)
         mid = []
         for i in range(len(point_coordinates)):
-            mid.append([((point_coordinates[i][0] + point_coordinates[i][2]) // 2), ((point_coordinates[i][1] + point_coordinates[i][3]) // 2)])
+            # print(point_coordinates[i])
+            mid.append([((point_coordinates[i][0] + (point_coordinates[i][2] // 2))), ((point_coordinates[i][1] + (point_coordinates[i][3]) // 2))])
         # mid_x = []
         # mid_y = []
         # for i in range(len(point_coordinates)):
@@ -147,20 +149,33 @@ class GirdDetect():
         000000 000000 000000 000000 000000 000000 where it goes 
         (1,1), (2,1), (3,1)....(6, 1), (1, 2), (2, 2)....(6, 6)"""
         
+        binary_string = "0" * 36
         for i in range(len(grid_cell)):
-            grid_cell[i][1] = 6 - grid_cell[i][1]
+            grid_cell[i][1] = 7 - grid_cell[i][1]
         
-            binary_string = self.coordinate_to_binary(grid_cell[i])
-            serial_connection.write(binary_string.encode())
+            binary_string = self.coordinate_to_binary(grid_cell[i], binary_string)
         
+        for i in range(0, len(binary_string), 6):
+            print(binary_string[i:i+6])
+        # print(binary_string)
+        packet = bytearray()
+        for i in range(0, len(binary_string), 6):
+            byte = binary_string[i:i+6]
+            packet.append(int(byte, 2))
+            print(packet)
+        
+        print("Packet: ", packet)
+        serial_connection.write(bytes('<', 'utf-8')) 
+        serial_connection.write(packet)
+        serial_connection.write(bytes('>', 'utf-8'))
         print("Data sent")
         serial_connection.close()
     
-    def coordinate_to_binary(self, grid_cell):
+    def coordinate_to_binary(self, grid_cell, binary_string):
         """Convert the grid cell to 36bit binary"""
-        
-        binary_string = "0" * 36
-        binary_string[grid_cell[0] + (grid_cell[1]-1)*6] = "1"
+        # print(binary_string[:(grid_cell[0] + (grid_cell[1]-1)*6 - 1)])
+        # print(binary_string[grid_cell[0] + (grid_cell[1]-1)*6:])
+        binary_string = binary_string[:(grid_cell[0] + (grid_cell[1]-1)*6 - 1)] + "1" + binary_string[grid_cell[0] + (grid_cell[1]-1)*6:]
         return binary_string
         
         
