@@ -2,6 +2,7 @@ import numpy as np
 import cv2 as cv
 import time
 import serial
+import math
 
 # New idea:
 # Get the bounding box of the surface       
@@ -13,7 +14,7 @@ import serial
 
 class GirdDetect():
     def __init__(self):
-        self.cap = cv.VideoCapture(0)
+        self.cap = cv.VideoCapture(1)
 
         if not self.cap.isOpened():
             print("Cannot open camera")
@@ -53,7 +54,7 @@ class GirdDetect():
                     print("Grid cell: ", grid_cell)
                     send = True
                     if send == True:
-                        port = "COM17"
+                        port = "COM19"
                         baudrate = 9600
                         serial_connection = serial.Serial(port, baudrate)
                         self.send_serial(grid_cell, serial_connection)
@@ -114,12 +115,22 @@ class GirdDetect():
 
         grid_coordinates = []
         for i in range(len(pc_surface)):
-            grid_bs_x = (pc_surface[i][2] // 6) # grid block size x
-            grid_bs_y = (pc_surface[i][3] // 6) # grid block size y
+            coord = []
+            grid_bs_x = (pc_surface[i][4] // 6) # grid block size x
+            grid_bs_y = (pc_surface[i][5] // 6) # grid block size y
+            print("grid_bs_y", grid_bs_y)
+            print("pc_surface_y", pc_surface[i][3])
+            x_num = math.ceil(pc_surface[i][2] / grid_bs_x)
+            y_num = math.ceil(pc_surface[i][3] / grid_bs_y)
+            print("Number of LEDs", x_num, y_num)
+            
             x = pc_surface[i][0] // grid_bs_x
             y = pc_surface[i][1] // grid_bs_y
             # print("Grid block: ", x, y)
-            grid_coordinates.append([x+1, y+1])
+            for i in range(x_num):
+                for j in range(y_num):
+                    coord.append([x+i+1, y+j+1])
+            grid_coordinates = grid_coordinates + coord
         return grid_coordinates
         
         
@@ -128,7 +139,7 @@ class GirdDetect():
         # coodinates is in format [x, y, w, h]
         pc_surface = []
         for i in range(len(point_coordinates)):
-            pc_surface.append([point_coordinates[i][0]-surface_coordinates[0], point_coordinates[i][1] - surface_coordinates[1], surface_coordinates[2], surface_coordinates[3]])
+            pc_surface.append([point_coordinates[i][0]-surface_coordinates[0], point_coordinates[i][1] - surface_coordinates[1], point_coordinates[i][2], point_coordinates[i][3], surface_coordinates[2], surface_coordinates[3]])
         return pc_surface
         
     
@@ -139,15 +150,19 @@ class GirdDetect():
         
         # print("Selected Area:", point_coordinates)
         mid = []
+        coord = []
         for i in range(len(point_coordinates)):
             # print(point_coordinates[i])
-            mid.append([((point_coordinates[i][0] + (point_coordinates[i][2] // 2))), ((point_coordinates[i][1] + (point_coordinates[i][3]) // 2))])
+            mid.append([((point_coordinates[i][0] + (point_coordinates[i][2] // 2))), ((point_coordinates[i][1] + (point_coordinates[i][3]) // 2)), point_coordinates[i][2], point_coordinates[i][3]])
+            coord.append([point_coordinates[i][0], point_coordinates[i][1], point_coordinates[i][2], point_coordinates[i][3]])
         # mid_x = []
         # mid_y = []
         # for i in range(len(point_coordinates)):
         #     mid_x.append((point_coordinates[i][0] + point_coordinates[i][2]) // 2)
         #     mid_y.append((point_coordinates[i][1] + point_coordinates[i][3]) // 2)
-        return mid
+        # print(coord)
+        # print(mid)
+        return coord
         
     def send_serial(self, grid_cell, serial_connection):
         """Transform grid coordinate to bottom left origin (6-y) and then change it to 36bit binary: 
