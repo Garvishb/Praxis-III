@@ -14,7 +14,7 @@ import math
 
 class GirdDetect():
     def __init__(self):
-        self.cap = cv.VideoCapture(1)
+        self.cap = cv.VideoCapture(0)
 
         if not self.cap.isOpened():
             print("Cannot open camera")
@@ -34,12 +34,17 @@ class GirdDetect():
             gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
             blur = cv.GaussianBlur(gray, (5, 5), 3)
             canny = cv.Canny(blur, 50, 50)
+            
+            # ret,th = cv.threshold(blur,240,255,cv.THRESH_BINARY)
+            th = cv.adaptiveThreshold(blur,255,cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY,11,2)
+            # th = cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,11,2)
             cv.imshow('canny', canny) 
+            cv.imshow('th', th)
             
             img_copy = img.copy()
             img_roi = img.copy()
             # getting contours
-            surface_coordinates = self.get_contours(canny, img_copy)
+            surface_coordinates = self.get_contours(th, img_copy)
             if cv.waitKey(1) == ord('s'): # press q to exit  
                 print("Surface coordinates: ", surface_coordinates)
                 # print("Point Coordinates", point_coordinates)
@@ -73,7 +78,8 @@ class GirdDetect():
         cv.destroyAllWindows()
         
     def get_contours(self, img, img_copy):
-        contours, hierarchy = cv.findContours(img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv.findContours(img, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        # contours, hierarchy = cv.findContours(img, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         # boxes = {}
         # i = 0
         for cnt in contours:

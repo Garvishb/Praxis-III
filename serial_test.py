@@ -36,8 +36,8 @@ def coordinate_to_binary(grid_cell, binary_string):
     return binary_string
 
 # coordinate_to_binary([3,2], "0"*36)
-grid_cell = [[1,1], [3, 2], [6,6], [1, 2]]
-port = "COM19`"
+grid_cell = [[1,1]]
+port = "COM20"
 baudrate = 9600
 serial_connection = serial.Serial(port, baudrate)
 send_serial(grid_cell, serial_connection)
